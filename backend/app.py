@@ -34,7 +34,7 @@ class Job(db.Model):
     salary = db.Column(db.String(100))
     description = db.Column(db.Text)
     source = db.Column(db.String(100))
-    recruiter_email = db.Column(db.String(100))  # ← ADDED for recruiter emails
+    recruiter_email = db.Column(db.String(100))
     posted_date = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Application(db.Model):
@@ -131,7 +131,8 @@ def get_jobs():
             (Job.company.contains(search))
         )
     
-    jobs = query.order_by(Job.posted_date.desc()).limit(100).all()
+    # NO LIMIT - show ALL jobs
+    jobs = query.order_by(Job.posted_date.desc()).all()
     
     return jsonify({
         'success': True,
@@ -234,7 +235,6 @@ def apply_job():
     cv_filename = None
     cv_path = None
     
-    # Handle CV upload
     if 'cv' in request.files:
         file = request.files['cv']
         if file and file.filename:
@@ -249,7 +249,7 @@ def apply_job():
     if not job:
         return jsonify({'success': False, 'message': 'Job not found'}), 404
     
-    # Save application to database
+    # Save application
     application = Application(
         job_id=job_id,
         applicant_name=data.get('name'),
@@ -261,7 +261,7 @@ def apply_job():
     db.session.add(application)
     db.session.commit()
     
-    # Get recruiter email (use default if not set)
+    # Get recruiter email
     recruiter_email = job.recruiter_email if job.recruiter_email else 'jobs@grafan.com'
     
     print(f"\n📧 Sending application email to recruiter: {recruiter_email}")
@@ -280,7 +280,7 @@ def apply_job():
         cv_path=cv_path
     )
     
-    # Send confirmation email to applicant
+    # Send confirmation to applicant
     email_sender.send_confirmation_email(
         to_email=data.get('email'),
         applicant_name=data.get('name'),
