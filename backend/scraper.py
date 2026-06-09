@@ -16,6 +16,17 @@ class JobScraper:
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         ]
         
+        # Known companies in Tanzania for fallback
+        self.known_companies = [
+            'NMB Bank', 'Vodacom', 'CRDB Bank', 'Selcom', 'Huawei', 'Tigo', 'Airtel',
+            'World Vision', 'Action Against Hunger', 'Marie Stopes', 'Bolt', 'Tembo Nickel',
+            'Tanzania Football Federation', 'TFF', 'NBC Bank', 'Braeburn', 'St. Constantine',
+            'Milvik', 'Glory New Building', 'Jerusalem Mbezi', 'World Bank', 'UNICEF',
+            'UNDP', 'WHO', 'Oxfam', 'Save the Children', 'Plan International',
+            'KPMG', 'Deloitte', 'PwC', 'EY', 'Serengeti Breweries', 'Tanzania Breweries',
+            'Bakhresa', 'Muhimbili Hospital', 'Aga Khan Hospital', 'Suma JKT', 'TANESCO'
+        ]
+        
         print("🤖 GRAFAN JOB SCRAPER READY (Keyword-based)")
         print("   Using smart keyword matching for job detection")
     
@@ -46,6 +57,52 @@ class JobScraper:
         ]
         
         return any(kw in text_lower for kw in job_keywords)
+    
+    def extract_company(self, text):
+        """Extract company name from job title or description - IMPROVED"""
+        text_clean = text.replace('\n', ' ').strip()
+        
+        # Pattern 1: "at Company Name"
+        match = re.search(r'at\s+([A-Za-z0-9\s&\.]+?)(?:\s+-|\s+\(|$|\s+is|\s+in|\s+–)', text_clean, re.IGNORECASE)
+        if match:
+            company = match.group(1).strip()
+            if len(company) > 2 and len(company) < 60:
+                return company
+        
+        # Pattern 2: "Company Name is hiring"
+        match = re.search(r'^([A-Za-z0-9\s&\.]+?)\s+(?:is hiring|announces|seeks|wants|looking for)', text_clean, re.IGNORECASE)
+        if match:
+            company = match.group(1).strip()
+            if len(company) > 2 and len(company) < 60:
+                return company
+        
+        # Pattern 3: "- Company Name" at end
+        match = re.search(r'-\s+([A-Za-z0-9\s&\.]+?)$', text_clean, re.IGNORECASE)
+        if match:
+            company = match.group(1).strip()
+            if len(company) > 2 and len(company) < 60:
+                return company
+        
+        # Pattern 4: "Job at Company Name"
+        match = re.search(r'job\s+at\s+([A-Za-z0-9\s&\.]+?)(?:\s+\(|$)', text_clean, re.IGNORECASE)
+        if match:
+            company = match.group(1).strip()
+            if len(company) > 2 and len(company) < 60:
+                return company
+        
+        # Pattern 5: "Company Name Vacancy"
+        match = re.search(r'^([A-Za-z0-9\s&\.]+?)\s+(?:Vacancy|Job|Opportunity)', text_clean, re.IGNORECASE)
+        if match:
+            company = match.group(1).strip()
+            if len(company) > 2 and len(company) < 60:
+                return company
+        
+        # Check known companies
+        for company in self.known_companies:
+            if company.lower() in text_clean.lower():
+                return company
+        
+        return 'Various'
     
     def scrape_any_url(self, url, source_name=None):
         """Scrape jobs from any URL"""
@@ -88,7 +145,7 @@ class JobScraper:
                             'location': self.extract_location(text),
                             'salary': self.extract_salary(text)
                         }
-                        self.log(f"Found job: {text[:50]}...")
+                        self.log(f"Found job: {text[:50]}... (Company: {found_jobs[text]['company']})")
             
             # Method 2: Look at links
             print(f"   🔍 Searching for job links...")
@@ -103,14 +160,14 @@ class JobScraper:
                             'location': self.extract_location(text),
                             'salary': self.extract_salary(text)
                         }
-                        self.log(f"Found job link: {text[:50]}...")
+                        self.log(f"Found job link: {text[:50]}... (Company: {found_jobs[text]['company']})")
             
             print(f"   📊 Found {len(found_jobs)} potential jobs")
             
             for title, job_data in list(found_jobs.items())[:50]:
                 jobs.append({
                     'title': job_data['title'],
-                    'company': job_data['company'] or 'Various',
+                    'company': job_data['company'] if job_data['company'] != 'Various' else self.extract_company(title),
                     'job_type': job_data['job_type'],
                     'location': job_data['location'] or 'Tanzania',
                     'salary': job_data['salary'],
@@ -175,19 +232,9 @@ class JobScraper:
         else:
             return 'onsite'
     
-    def extract_company(self, text):
-        patterns = [
-            r'at\s+([A-Za-z0-9\s&\.]+?)(?:\s+-|\s+\(|$)',
-            r'-\s+([A-Za-z0-9\s&\.]+?)(?:\s+-|\s+\(|$)',
-        ]
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()[:50]
-        return 'Various'
-    
     def extract_location(self, text):
-        locations = ['Dar es Salaam', 'Arusha', 'Mwanza', 'Dodoma', 'Tanga', 'Mbeya', 'Zanzibar']
+        locations = ['Dar es Salaam', 'Arusha', 'Mwanza', 'Dodoma', 'Tanga', 'Mbeya', 'Zanzibar', 
+                     'Kilimanjaro', 'Morogoro', 'Tabora', 'Kigoma', 'Singida', 'Rukwa', 'Mtwara']
         for loc in locations:
             if loc.lower() in text.lower():
                 return loc
