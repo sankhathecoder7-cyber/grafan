@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = 'http://localhost:5000/api';
+// Use production API URL when deployed, localhost for development
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://grafan-1.onrender.com/api' 
+  : 'http://localhost:5000/api';
 
 function App() {
   const [jobs, setJobs] = useState([]);
@@ -131,6 +134,7 @@ function App() {
     if (source === 'Mabumbe') return '📌 Source: Mabumbe';
     if (source === 'Ajirayako') return '📌 Source: Ajirayako';
     if (source === 'Sample') return '📌 Source: GRAFAN (Sample)';
+    if (source === 'Ajira Portal') return '🔗 Source: Ajira Portal (Official)';
     if (source.startsWith('Scraped')) return `📌 Source: ${source}`;
     return `📌 Source: ${source}`;
   };
